@@ -1,14 +1,31 @@
 const asyncHandler = require('../../common/utils/asyncHandler');
 const ApiError = require('../../common/utils/ApiError');
-const RecurringRule = require('./recurring-rule.model');
-const Account = require('../accounts/account.model');
-const Category = require('../categories/category.model');
+const supabase = require('../../config/supabase');
+const { mapRecurringRule, throwIfSupabaseError } = require('../../common/utils/supabaseHelpers');
 
 async function validateOwnership(userId, accountId, categoryId, type) {
-  const [account, category] = await Promise.all([
-    Account.findOne({ _id: accountId, userId, isArchived: false }),
-    Category.findOne({ _id: categoryId, userId, isArchived: false }),
+  const [accountResult, categoryResult] = await Promise.all([
+    supabase
+      .from('accounts')
+      .select('*')
+      .eq('id', accountId)
+      .eq('user_id', userId)
+      .eq('is_archived', false)
+      .maybeSingle(),
+    supabase
+      .from('categories')
+      .select('*')
+      .eq('id', categoryId)
+      .eq('user_id', userId)
+      .eq('is_archived', false)
+      .maybeSingle(),
   ]);
+
+  throwIfSupabaseError(accountResult.error, 'Failed to verify account');
+  throwIfSupabaseError(categoryResult.error, 'Failed to verify category');
+
+  const account = accountResult.data;
+  const category = categoryResult.data;
 
   if (!account) {
     throw new ApiError(400, 'Invalid account');
@@ -24,62 +41,103 @@ async function validateOwnership(userId, accountId, categoryId, type) {
 }
 
 const listRecurringRules = asyncHandler(async (req, res) => {
-  const rules = await RecurringRule.find({ userId: req.user.id })
-    .sort({ createdAt: -1 })
-    .populate('categoryId', 'name type iconKey colorToken')
-    .populate('accountId', 'name type');
+  const { data, error } = await supabase
+    .from('recurring_rules')
+    .select('*, category:categories(id,name,type,icon_key,color_token), account:accounts(id,name,type)')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false });
 
-  res.status(200).json({ success: true, data: rules });
+  throwIfSupabaseError(error, 'Failed to list recurring rules');
+
+  res.status(200).json({ success: true, data: (data || []).map(mapRecurringRule) });
 });
 
 const createRecurringRule = asyncHandler(async (req, res) => {
-  const payload = { ...req.body };
-  payload.userId = req.user.id;
-  payload.startDate = new Date(payload.startDate);
-  payload.nextRunAt = new Date(payload.nextRunAt);
-  payload.endDate = payload.endDate ? new Date(payload.endDate) : null;
+  const payload = {
+    user_id: req.user.id,
+    title: req.body.title,
+    amount: Number(req.body.amount),
+    type: req.body.type,
+    account_id: req.body.accountId,
+    category_id: req.body.categoryId,
+    frequency: req.body.frequency,
+    start_date: new Date(req.body.startDate).toISOString(),
+    end_date: req.body.endDate ? new Date(req.body.endDate).toISOString() : null,
+    next_run_at: new Date(req.body.nextRunAt).toISOString(),
+    is_active: req.body.isActive ?? true,
+  };
 
-  await validateOwnership(req.user.id, payload.accountId, payload.categoryId, payload.type);
+  await validateOwnership(req.user.id, payload.account_id, payload.category_id, payload.type);
 
-  const rule = await RecurringRule.create(payload);
+  const { data, error } = await supabase
+    .from('recurring_rules')
+    .insert(payload)
+    .select('*, category:categories(id,name,type,icon_key,color_token), account:accounts(id,name,type)')
+    .single();
 
-  res.status(201).json({ success: true, data: rule });
+  throwIfSupabaseError(error, 'Failed to create recurring rule');
+
+  res.status(201).json({ success: true, data: mapRecurringRule(data) });
 });
 
 const updateRecurringRule = asyncHandler(async (req, res) => {
-  const existing = await RecurringRule.findOne({ _id: req.params.id, userId: req.user.id });
+  const { data: existing, error: existingError } = await supabase
+    .from('recurring_rules')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle();
+
+  throwIfSupabaseError(existingError, 'Failed to load recurring rule');
+
   if (!existing) {
     throw new ApiError(404, 'Recurring rule not found');
   }
 
   const updated = {
     title: req.body.title ?? existing.title,
-    amount: req.body.amount ?? existing.amount,
+    amount: req.body.amount !== undefined ? Number(req.body.amount) : existing.amount,
     type: req.body.type ?? existing.type,
-    accountId: req.body.accountId ?? existing.accountId,
-    categoryId: req.body.categoryId ?? existing.categoryId,
+    account_id: req.body.accountId ?? existing.account_id,
+    category_id: req.body.categoryId ?? existing.category_id,
     frequency: req.body.frequency ?? existing.frequency,
-    startDate: req.body.startDate ? new Date(req.body.startDate) : existing.startDate,
-    endDate:
+    start_date: req.body.startDate ? new Date(req.body.startDate).toISOString() : existing.start_date,
+    end_date:
       req.body.endDate === null
         ? null
         : req.body.endDate
-          ? new Date(req.body.endDate)
-          : existing.endDate,
-    nextRunAt: req.body.nextRunAt ? new Date(req.body.nextRunAt) : existing.nextRunAt,
-    isActive: req.body.isActive ?? existing.isActive,
+          ? new Date(req.body.endDate).toISOString()
+          : existing.end_date,
+    next_run_at: req.body.nextRunAt ? new Date(req.body.nextRunAt).toISOString() : existing.next_run_at,
+    is_active: req.body.isActive ?? existing.is_active,
+    updated_at: new Date().toISOString(),
   };
 
-  await validateOwnership(req.user.id, updated.accountId, updated.categoryId, updated.type);
+  await validateOwnership(req.user.id, updated.account_id, updated.category_id, updated.type);
 
-  Object.assign(existing, updated);
-  await existing.save();
+  const { data, error } = await supabase
+    .from('recurring_rules')
+    .update(updated)
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('*, category:categories(id,name,type,icon_key,color_token), account:accounts(id,name,type)')
+    .maybeSingle();
 
-  res.status(200).json({ success: true, data: existing });
+  throwIfSupabaseError(error, 'Failed to update recurring rule');
+
+  res.status(200).json({ success: true, data: mapRecurringRule(data) });
 });
 
 const deleteRecurringRule = asyncHandler(async (req, res) => {
-  const rule = await RecurringRule.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+  const { data: rule, error } = await supabase
+    .from('recurring_rules')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('id')
+    .maybeSingle();
+
+  throwIfSupabaseError(error, 'Failed to delete recurring rule');
 
   if (!rule) {
     throw new ApiError(404, 'Recurring rule not found');

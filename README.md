@@ -1,11 +1,11 @@
 # Personal Expense Tracker (Full Stack)
 
-A full-stack personal expense tracker with React frontend and Express + MongoDB backend.
+A full-stack personal expense tracker with React frontend and Express + Supabase Postgres backend.
 
 ## Tech Stack
 
 - Frontend: React, Tailwind CSS, React Router, Axios, Recharts
-- Backend: Node.js, Express, MongoDB, Mongoose, JWT, bcrypt, Zod
+- Backend: Node.js, Express, Supabase Postgres, JWT, bcrypt, Zod
 
 ## Monorepo Structure
 
@@ -38,7 +38,7 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-4. Start MongoDB (local service or Atlas URI).
+4. Configure Supabase project and database schema (see backend README for SQL setup).
 
 5. Start full stack from root:
 
@@ -57,7 +57,8 @@ npm run dev
 ```env
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/expense-tracker
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 CLIENT_URL=http://localhost:5173
 CORS_ORIGINS=http://localhost:5173
 JWT_ACCESS_SECRET=replace_with_a_long_random_secret
@@ -103,6 +104,6 @@ npm run build --prefix frontend
 3. Add CSV import pipeline with validation preview and rollback on errors.
 4. Add test coverage (unit + integration + e2e).
 5. Add role-based access and audit logs.
-6. Add Docker Compose for Mongo + API + Web one-command startup.
+6. Add Docker Compose for API + Web one-command startup.
 7. Add code splitting and lazy route loading for smaller frontend bundle.
 8. Add observability (structured logs, tracing, metrics dashboards).

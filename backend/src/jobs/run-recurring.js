@@ -1,6 +1,5 @@
-const RecurringRule = require('../modules/recurring/recurring-rule.model');
-const Transaction = require('../modules/transactions/transaction.model');
-const Account = require('../modules/accounts/account.model');
+const supabase = require('../config/supabase');
+const { throwIfSupabaseError } = require('../common/utils/supabaseHelpers');
 
 function incrementNextRun(current, frequency) {
   const next = new Date(current);
@@ -12,34 +11,60 @@ function incrementNextRun(current, frequency) {
 
 async function runRecurringRules() {
   const now = new Date();
-  const rules = await RecurringRule.find({
-    isActive: true,
-    nextRunAt: { $lte: now },
-    $or: [{ endDate: null }, { endDate: { $gte: now } }],
-  });
+  const { data: rules, error: rulesError } = await supabase
+    .from('recurring_rules')
+    .select('*')
+    .eq('is_active', true)
+    .lte('next_run_at', now.toISOString())
+    .or(`end_date.is.null,end_date.gte.${now.toISOString()}`);
 
-  for (const rule of rules) {
-    await Transaction.create({
-      userId: rule.userId,
-      accountId: rule.accountId,
-      categoryId: rule.categoryId,
+  throwIfSupabaseError(rulesError, 'Failed to load recurring rules');
+
+  for (const rule of rules || []) {
+    const { error: insertTxError } = await supabase.from('transactions').insert({
+      user_id: rule.user_id,
+      account_id: rule.account_id,
+      category_id: rule.category_id,
       type: rule.type,
       amount: rule.amount,
-      transactionDate: now,
+      transaction_date: now.toISOString(),
       note: `Auto-generated from recurring rule: ${rule.title}`,
       source: 'recurring',
-      recurringRuleId: rule._id,
+      recurring_rule_id: rule.id,
     });
 
-    const account = await Account.findOne({ _id: rule.accountId, userId: rule.userId });
+    throwIfSupabaseError(insertTxError, 'Failed to insert recurring transaction');
+
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
+      .select('current_balance')
+      .eq('id', rule.account_id)
+      .eq('user_id', rule.user_id)
+      .maybeSingle();
+
+    throwIfSupabaseError(accountError, 'Failed to load account for recurring update');
+
     if (account) {
       const delta = rule.type === 'income' ? rule.amount : -rule.amount;
-      account.currentBalance = Number((account.currentBalance + delta).toFixed(2));
-      await account.save();
+      const updatedBalance = Number((Number(account.current_balance) + Number(delta)).toFixed(2));
+
+      const { error: balanceError } = await supabase
+        .from('accounts')
+        .update({ current_balance: updatedBalance, updated_at: now.toISOString() })
+        .eq('id', rule.account_id)
+        .eq('user_id', rule.user_id);
+
+      throwIfSupabaseError(balanceError, 'Failed to update account balance for recurring rule');
     }
 
-    rule.nextRunAt = incrementNextRun(rule.nextRunAt, rule.frequency);
-    await rule.save();
+    const nextRunAt = incrementNextRun(rule.next_run_at, rule.frequency);
+    const { error: updateRuleError } = await supabase
+      .from('recurring_rules')
+      .update({ next_run_at: nextRunAt.toISOString(), updated_at: now.toISOString() })
+      .eq('id', rule.id)
+      .eq('user_id', rule.user_id);
+
+    throwIfSupabaseError(updateRuleError, 'Failed to update next recurring execution');
   }
 }
 

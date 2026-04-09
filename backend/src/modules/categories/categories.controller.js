@@ -1,43 +1,80 @@
 const asyncHandler = require('../../common/utils/asyncHandler');
 const ApiError = require('../../common/utils/ApiError');
-const Category = require('./category.model');
+const supabase = require('../../config/supabase');
+const { mapCategory, throwIfSupabaseError } = require('../../common/utils/supabaseHelpers');
 
 const listCategories = asyncHandler(async (req, res) => {
-  const categories = await Category.find({ userId: req.user.id }).sort({ type: 1, name: 1 });
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .order('type', { ascending: true })
+    .order('name', { ascending: true });
+
+  throwIfSupabaseError(error, 'Failed to list categories');
 
   res.status(200).json({
     success: true,
-    data: categories,
+    data: (data || []).map(mapCategory),
   });
 });
 
 const createCategory = asyncHandler(async (req, res) => {
-  const category = await Category.create({
-    ...req.body,
-    userId: req.user.id,
-  });
+  const payload = {
+    user_id: req.user.id,
+    name: req.body.name,
+    type: req.body.type,
+    icon_key: req.body.iconKey || 'tag',
+    color_token: req.body.colorToken || 'slate',
+    is_archived: req.body.isArchived || false,
+  };
 
-  res.status(201).json({ success: true, data: category });
+  const { data, error } = await supabase.from('categories').insert(payload).select('*').single();
+
+  throwIfSupabaseError(error, 'Failed to create category');
+
+  res.status(201).json({ success: true, data: mapCategory(data) });
 });
 
 const updateCategory = asyncHandler(async (req, res) => {
-  const category = await Category.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user.id },
-    req.body,
-    { new: true, runValidators: true }
-  );
+  const payload = {
+    ...(req.body.name !== undefined ? { name: req.body.name } : {}),
+    ...(req.body.type !== undefined ? { type: req.body.type } : {}),
+    ...(req.body.iconKey !== undefined ? { icon_key: req.body.iconKey } : {}),
+    ...(req.body.colorToken !== undefined ? { color_token: req.body.colorToken } : {}),
+    ...(req.body.isArchived !== undefined ? { is_archived: req.body.isArchived } : {}),
+    updated_at: new Date().toISOString(),
+  };
 
-  if (!category) {
+  const { data, error } = await supabase
+    .from('categories')
+    .update(payload)
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('*')
+    .maybeSingle();
+
+  throwIfSupabaseError(error, 'Failed to update category');
+
+  if (!data) {
     throw new ApiError(404, 'Category not found');
   }
 
-  res.status(200).json({ success: true, data: category });
+  res.status(200).json({ success: true, data: mapCategory(data) });
 });
 
 const deleteCategory = asyncHandler(async (req, res) => {
-  const category = await Category.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+  const { data, error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('id')
+    .maybeSingle();
 
-  if (!category) {
+  throwIfSupabaseError(error, 'Failed to delete category');
+
+  if (!data) {
     throw new ApiError(404, 'Category not found');
   }
 

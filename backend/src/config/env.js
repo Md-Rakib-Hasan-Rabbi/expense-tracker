@@ -5,7 +5,8 @@ dotenv.config();
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 5000),
-  mongodbUri: process.env.MONGODB_URI,
+  supabaseUrl: process.env.SUPABASE_URL,
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173')
     .split(',')
@@ -21,7 +22,7 @@ const env = {
   rateLimitMax: Number(process.env.RATE_LIMIT_MAX || 200),
 };
 
-const required = ['mongodbUri', 'jwtAccessSecret', 'jwtRefreshSecret'];
+const required = ['supabaseUrl', 'supabaseServiceRoleKey', 'jwtAccessSecret', 'jwtRefreshSecret'];
 
 for (const key of required) {
   if (!env[key]) {

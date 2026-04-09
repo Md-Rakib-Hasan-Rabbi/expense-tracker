@@ -1,42 +1,79 @@
 const asyncHandler = require('../../common/utils/asyncHandler');
 const ApiError = require('../../common/utils/ApiError');
-const Account = require('./account.model');
+const supabase = require('../../config/supabase');
+const { mapAccount, throwIfSupabaseError } = require('../../common/utils/supabaseHelpers');
 
 const listAccounts = asyncHandler(async (req, res) => {
-  const accounts = await Account.find({ userId: req.user.id }).sort({ name: 1 });
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .order('name', { ascending: true });
 
-  res.status(200).json({ success: true, data: accounts });
+  throwIfSupabaseError(error, 'Failed to list accounts');
+
+  res.status(200).json({ success: true, data: (data || []).map(mapAccount) });
 });
 
 const createAccount = asyncHandler(async (req, res) => {
-  const payload = { ...req.body, userId: req.user.id };
-  if (payload.currentBalance === undefined && payload.openingBalance !== undefined) {
-    payload.currentBalance = payload.openingBalance;
-  }
+  const openingBalance = req.body.openingBalance ?? 0;
+  const currentBalance = req.body.currentBalance ?? openingBalance;
 
-  const account = await Account.create(payload);
+  const payload = {
+    user_id: req.user.id,
+    name: req.body.name,
+    type: req.body.type || 'bank',
+    opening_balance: openingBalance,
+    current_balance: currentBalance,
+    is_archived: req.body.isArchived || false,
+  };
 
-  res.status(201).json({ success: true, data: account });
+  const { data, error } = await supabase.from('accounts').insert(payload).select('*').single();
+
+  throwIfSupabaseError(error, 'Failed to create account');
+
+  res.status(201).json({ success: true, data: mapAccount(data) });
 });
 
 const updateAccount = asyncHandler(async (req, res) => {
-  const account = await Account.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user.id },
-    req.body,
-    { new: true, runValidators: true }
-  );
+  const payload = {
+    ...(req.body.name !== undefined ? { name: req.body.name } : {}),
+    ...(req.body.type !== undefined ? { type: req.body.type } : {}),
+    ...(req.body.openingBalance !== undefined ? { opening_balance: req.body.openingBalance } : {}),
+    ...(req.body.currentBalance !== undefined ? { current_balance: req.body.currentBalance } : {}),
+    ...(req.body.isArchived !== undefined ? { is_archived: req.body.isArchived } : {}),
+    updated_at: new Date().toISOString(),
+  };
 
-  if (!account) {
+  const { data, error } = await supabase
+    .from('accounts')
+    .update(payload)
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('*')
+    .maybeSingle();
+
+  throwIfSupabaseError(error, 'Failed to update account');
+
+  if (!data) {
     throw new ApiError(404, 'Account not found');
   }
 
-  res.status(200).json({ success: true, data: account });
+  res.status(200).json({ success: true, data: mapAccount(data) });
 });
 
 const deleteAccount = asyncHandler(async (req, res) => {
-  const account = await Account.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+  const { data, error } = await supabase
+    .from('accounts')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('id')
+    .maybeSingle();
 
-  if (!account) {
+  throwIfSupabaseError(error, 'Failed to delete account');
+
+  if (!data) {
     throw new ApiError(404, 'Account not found');
   }
 

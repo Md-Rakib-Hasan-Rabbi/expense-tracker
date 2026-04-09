@@ -5,8 +5,8 @@ const exportTransactionsSchema = z.object({
     from: z.string().datetime().optional(),
     to: z.string().datetime().optional(),
     type: z.enum(['expense', 'income']).optional(),
-    accountId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
-    categoryId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
+    accountId: z.string().uuid().optional(),
+    categoryId: z.string().uuid().optional(),
   }),
 });
 

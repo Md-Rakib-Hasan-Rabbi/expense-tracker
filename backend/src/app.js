@@ -4,7 +4,6 @@ const cors = require('cors');
 const morgan = require('morgan');
 const compression = require('compression');
 const hpp = require('hpp');
-const mongoSanitize = require('express-mongo-sanitize');
 const cookieParser = require('cookie-parser');
 
 const env = require('./config/env');
@@ -36,7 +35,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(compression());
 app.use(hpp());
-app.use(mongoSanitize());
 
 if (env.nodeEnv !== 'test') {
   app.use(morgan('dev'));

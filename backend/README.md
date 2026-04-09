@@ -1,12 +1,12 @@
 # Personal Expense Tracker Backend
 
-Production-ready Express + MongoDB backend for the Personal Expense Tracker app.
+Production-ready Express + Supabase (Postgres) backend for the Personal Expense Tracker app.
 
 ## Tech Stack
 
 - Node.js
 - Express.js
-- MongoDB + Mongoose
+- Supabase Postgres
 - JWT (access + refresh)
 - bcrypt
 - Zod validation
@@ -22,7 +22,7 @@ Production-ready Express + MongoDB backend for the Personal Expense Tracker app.
 - Reports (summary, category breakdown, monthly trend)
 - CSV transaction export endpoint
 - Recurring rules CRUD
-- Security middleware (`helmet`, `cors`, `rate-limit`, `mongo-sanitize`, `hpp`)
+- Security middleware (`helmet`, `cors`, `rate-limit`, `hpp`)
 - Centralized error handling
 
 ## Project Structure
@@ -73,15 +73,21 @@ On Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-3. Update `.env` values (Mongo URI + JWT secrets are required).
+3. Create your Supabase project and run SQL schema:
 
-4. Start development server:
+- Open Supabase SQL Editor.
+- Run [supabase/schema.sql](supabase/schema.sql).
+- Copy `Project URL` and `service_role` key from Project Settings → API.
+
+4. Update `.env` values with Supabase and JWT secrets.
+
+5. Start development server:
 
 ```bash
 npm run dev
 ```
 
-5. Health check:
+6. Health check:
 
 ```bash
 GET http://localhost:5000/health
@@ -156,7 +162,6 @@ GET http://localhost:5000/health
 - HTTP-only refresh cookies
 - Input validation with Zod
 - Rate limiting for API
-- NoSQL injection sanitization
 - Security headers with Helmet
 
 ## Next Step
