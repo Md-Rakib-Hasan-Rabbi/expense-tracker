@@ -4,6 +4,7 @@ import { getAccessToken, setAccessToken, clearAccessToken } from './tokenStorage
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 let unauthorizedHandler = null;
+let refreshPromise = null;
 
 export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = handler;
@@ -25,6 +26,28 @@ const refreshClient = axios.create({
   },
 });
 
+function isAuthEndpoint(url = '') {
+  return (
+    url.includes('/auth/login') ||
+    url.includes('/auth/register') ||
+    url.includes('/auth/refresh') ||
+    url.includes('/auth/logout')
+  );
+}
+
+async function requestAccessTokenRefresh() {
+  if (!refreshPromise) {
+    refreshPromise = refreshClient
+      .post('/auth/refresh')
+      .then((response) => response?.data?.data?.accessToken || null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -37,12 +60,16 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url || '';
 
-    if (error.response?.status === 401 && !originalRequest?._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest?._retry &&
+      !isAuthEndpoint(requestUrl)
+    ) {
       originalRequest._retry = true;
       try {
-        const { data } = await refreshClient.post('/auth/refresh');
-        const accessToken = data?.data?.accessToken;
+        const accessToken = await requestAccessTokenRefresh();
         if (accessToken) {
           setAccessToken(accessToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;

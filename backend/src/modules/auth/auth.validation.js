@@ -1,12 +1,22 @@
 const { z } = require('zod');
 
+const optionalTrimmedString = (schema) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed === '' ? undefined : trimmed;
+    },
+    schema.optional()
+  );
+
 const registerSchema = z.object({
   body: z.object({
     name: z.string().trim().min(2).max(80),
     email: z.string().email().toLowerCase(),
     password: z.string().min(8).max(128),
-    currency: z.string().trim().length(3).optional(),
-    timezone: z.string().trim().min(1).max(100).optional(),
+    currency: optionalTrimmedString(z.string().length(3)),
+    timezone: optionalTrimmedString(z.string().max(100)),
   }),
 });
 

@@ -24,7 +24,13 @@ export function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await register(form);
+      await register({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        currency: form.currency.trim() || 'USD',
+        timezone: form.timezone.trim() || 'UTC',
+      });
       navigate('/dashboard');
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, 'Registration failed'));
