@@ -6,7 +6,7 @@ import { Input } from '../components/common/Input';
 import { PageHeader } from '../components/common/PageHeader';
 import { Select } from '../components/common/Select';
 import { accountsApi, categoriesApi, transactionsApi } from '../services/resourceApi';
-import { formatCurrency, formatDate, toISODate } from '../utils/formatters';
+import { formatCurrency, formatDate, toEndOfDayISO, toISODate, toStartOfDayISO } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useAuth } from '../context/useAuth';
 
@@ -52,8 +52,8 @@ export function TransactionsPage() {
         limit: 15,
       };
 
-      if (filters.from) params.from = toISODate(filters.from);
-      if (filters.to) params.to = toISODate(filters.to);
+      if (filters.from) params.from = toStartOfDayISO(filters.from);
+      if (filters.to) params.to = toEndOfDayISO(filters.to);
       if (filters.type) params.type = filters.type;
 
       const res = await transactionsApi.list(params);
@@ -88,6 +88,21 @@ export function TransactionsPage() {
   const submitForm = async (event) => {
     event.preventDefault();
     setError('');
+
+    if (!form.accountId) {
+      setError('Please select an account.');
+      return;
+    }
+
+    if (!form.categoryId) {
+      setError('Please select a category.');
+      return;
+    }
+
+    if (!Number(form.amount) || Number(form.amount) <= 0) {
+      setError('Amount must be greater than zero.');
+      return;
+    }
 
     const payload = {
       accountId: form.accountId,

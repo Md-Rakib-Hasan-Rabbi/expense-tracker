@@ -5,8 +5,8 @@ import { PageHeader } from '../components/common/PageHeader';
 import { Input } from '../components/common/Input';
 import { ExpensePieChart } from '../components/charts/ExpensePieChart';
 import { TrendAreaChart } from '../components/charts/TrendAreaChart';
-import { reportsApi } from '../services/resourceApi';
-import { formatCurrency, toISODate } from '../utils/formatters';
+import { exportsApi, reportsApi } from '../services/resourceApi';
+import { formatCurrency, toEndOfDayISO, toStartOfDayISO } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useAuth } from '../context/useAuth';
 
@@ -28,12 +28,13 @@ export function ReportsPage() {
   const [trend, setTrend] = useState([]);
   const [filters, setFilters] = useState(getDefaultDateInputs());
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
     const params = {
-      from: toISODate(filters.from),
-      to: toISODate(filters.to),
+      from: toStartOfDayISO(filters.from),
+      to: toEndOfDayISO(filters.to),
     };
 
     try {
@@ -55,6 +56,30 @@ export function ReportsPage() {
       void load();
     });
   }, [load]);
+
+  const exportCsv = async () => {
+    setExporting(true);
+    setError('');
+    try {
+      const blob = await exportsApi.transactionsCsv({
+        from: toStartOfDayISO(filters.from),
+        to: toEndOfDayISO(filters.to),
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `transactions-${filters.from}-to-${filters.to}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (exportError) {
+      setError(getApiErrorMessage(exportError, 'Failed to export CSV'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -79,6 +104,11 @@ export function ReportsPage() {
           <div className="flex items-end">
             <Button className="w-full" onClick={load}>
               Refresh Report
+            </Button>
+          </div>
+          <div className="flex items-end md:col-span-3 lg:col-span-1">
+            <Button variant="secondary" className="w-full" onClick={exportCsv} disabled={exporting}>
+              {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
           </div>
         </div>

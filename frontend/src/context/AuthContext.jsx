@@ -1,5 +1,11 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
-import { getMe, login as loginApi, logout as logoutApi, register as registerApi } from '../services/authApi';
+import {
+  getMe,
+  login as loginApi,
+  logout as logoutApi,
+  register as registerApi,
+  refreshSession,
+} from '../services/authApi';
 import { setUnauthorizedHandler } from '../services/apiClient';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../services/tokenStorage';
 
@@ -28,12 +34,14 @@ export function AuthProvider({ children }) {
 
   const bootstrap = useCallback(async () => {
     const token = getAccessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      if (!token) {
+        const refreshed = await refreshSession();
+        if (refreshed?.accessToken) {
+          setAccessToken(refreshed.accessToken);
+        }
+      }
+
       const profile = await getMe();
       setUser(profile);
     } catch {

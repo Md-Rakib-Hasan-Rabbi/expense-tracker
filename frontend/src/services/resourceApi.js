@@ -34,6 +34,16 @@ export const reportsApi = {
   monthlyTrend: (params) => apiClient.get('/reports/monthly-trend', { params }).then((res) => res.data),
 };
 
+export const exportsApi = {
+  transactionsCsv: (params) =>
+    apiClient
+      .get('/exports/transactions/csv', {
+        params,
+        responseType: 'blob',
+      })
+      .then((res) => res.data),
+};
+
 export const recurringApi = {
   list: () => apiClient.get('/recurring-rules').then((res) => res.data),
   create: (payload) => apiClient.post('/recurring-rules', payload).then((res) => res.data),

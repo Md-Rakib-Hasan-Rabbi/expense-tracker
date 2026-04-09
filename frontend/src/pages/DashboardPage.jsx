@@ -57,7 +57,11 @@ export function DashboardPage() {
         <StatCard title="Total Income" value={summary.income} currency={user?.currency} tone="emerald" />
         <StatCard title="Total Expense" value={summary.expense} currency={user?.currency} tone="rose" />
         <StatCard title="Net Balance" value={summary.net} currency={user?.currency} tone="cyan" />
-        <StatCard title="Top Categories" value={breakdown.length} currency={user?.currency} tone="violet" note="Active spend categories" />
+        <div className="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-4 backdrop-blur-sm comet-overlay prism-float">
+          <p className="text-xs uppercase tracking-widest text-slate-400">Top Categories</p>
+          <p className="mt-2 text-2xl font-bold text-violet-300">{breakdown.length}</p>
+          <p className="mt-1 text-xs text-slate-500">Active spend categories</p>
+        </div>
       </div>
 
       {loading ? (

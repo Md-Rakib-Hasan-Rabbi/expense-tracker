@@ -128,15 +128,21 @@ const updateTransaction = asyncHandler(async (req, res) => {
   const newAccount = await ensureOwnedAccount(req.user.id, updatedPayload.accountId);
   await ensureOwnedCategory(req.user.id, updatedPayload.categoryId, updatedPayload.type);
 
-  oldAccount.currentBalance = normalizeMoney(
-    oldAccount.currentBalance - signedAmount(existing.type, existing.amount)
-  );
+  if (oldAccount._id.equals(newAccount._id)) {
+    const delta = signedAmount(updatedPayload.type, updatedPayload.amount) - signedAmount(existing.type, existing.amount);
+    oldAccount.currentBalance = normalizeMoney(oldAccount.currentBalance + delta);
+    await oldAccount.save();
+  } else {
+    oldAccount.currentBalance = normalizeMoney(
+      oldAccount.currentBalance - signedAmount(existing.type, existing.amount)
+    );
 
-  newAccount.currentBalance = normalizeMoney(
-    newAccount.currentBalance + signedAmount(updatedPayload.type, updatedPayload.amount)
-  );
+    newAccount.currentBalance = normalizeMoney(
+      newAccount.currentBalance + signedAmount(updatedPayload.type, updatedPayload.amount)
+    );
 
-  await Promise.all([oldAccount.save(), oldAccount._id.equals(newAccount._id) ? Promise.resolve() : newAccount.save()]);
+    await Promise.all([oldAccount.save(), newAccount.save()]);
+  }
 
   Object.assign(existing, updatedPayload);
   await existing.save();

@@ -8,6 +8,7 @@ const transactionsRoutes = require('./modules/transactions/transactions.routes')
 const budgetsRoutes = require('./modules/budgets/budgets.routes');
 const reportsRoutes = require('./modules/reports/reports.routes');
 const recurringRoutes = require('./modules/recurring/recurring.routes');
+const exportsRoutes = require('./modules/exports/exports.routes');
 
 const router = express.Router();
 
@@ -19,5 +20,6 @@ router.use('/transactions', transactionsRoutes);
 router.use('/budgets', budgetsRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/recurring-rules', recurringRoutes);
+router.use('/exports', exportsRoutes);
 
 module.exports = router;

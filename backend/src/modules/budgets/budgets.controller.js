@@ -1,7 +1,9 @@
 const asyncHandler = require('../../common/utils/asyncHandler');
 const ApiError = require('../../common/utils/ApiError');
+const mongoose = require('mongoose');
 const Budget = require('./budget.model');
 const Category = require('../categories/category.model');
+const Transaction = require('../transactions/transaction.model');
 
 function currentMonthKey() {
   const now = new Date();
@@ -10,12 +12,59 @@ function currentMonthKey() {
 
 const listBudgets = asyncHandler(async (req, res) => {
   const monthKey = req.query.month || currentMonthKey();
+  const [year, month] = monthKey.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const userObjectId = new mongoose.Types.ObjectId(req.user.id);
 
   const budgets = await Budget.find({ userId: req.user.id, monthKey })
     .populate('categoryId', 'name type iconKey colorToken')
     .sort({ createdAt: -1 });
 
-  res.status(200).json({ success: true, data: budgets });
+  const spendAggregation = await Transaction.aggregate([
+    {
+      $match: {
+        userId: userObjectId,
+        type: 'expense',
+        transactionDate: { $gte: start, $lte: end },
+      },
+    },
+    {
+      $group: {
+        _id: '$categoryId',
+        spentAmount: { $sum: '$amount' },
+      },
+    },
+  ]);
+
+  const spendMap = new Map(spendAggregation.map((item) => [String(item._id), item.spentAmount]));
+
+  const enrichedBudgets = budgets.map((budget) => {
+    const spentAmount = Number(spendMap.get(String(budget.categoryId?._id || budget.categoryId)) || 0);
+    const remainingAmount = Number((budget.limitAmount - spentAmount).toFixed(2));
+    const progressPercent = budget.limitAmount > 0 ? Number(((spentAmount / budget.limitAmount) * 100).toFixed(2)) : 0;
+
+    return {
+      ...budget.toObject(),
+      spentAmount,
+      remainingAmount,
+      progressPercent,
+      isThresholdReached: progressPercent >= budget.alertThresholdPercent,
+      isOverspent: spentAmount > budget.limitAmount,
+    };
+  });
+
+  const totals = enrichedBudgets.reduce(
+    (acc, budget) => {
+      acc.totalLimit += Number(budget.limitAmount || 0);
+      acc.totalSpent += Number(budget.spentAmount || 0);
+      return acc;
+    },
+    { totalLimit: 0, totalSpent: 0 }
+  );
+  totals.totalRemaining = Number((totals.totalLimit - totals.totalSpent).toFixed(2));
+
+  res.status(200).json({ success: true, data: enrichedBudgets, meta: { monthKey, ...totals } });
 });
 
 const upsertBudget = asyncHandler(async (req, res) => {

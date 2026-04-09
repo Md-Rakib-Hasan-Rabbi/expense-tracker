@@ -14,6 +14,7 @@ React + Tailwind frontend for the Personal Expense Tracker.
 
 - Responsive sidebar dashboard layout
 - Protected routes with auth guard
+- Public route guard for login/register
 - Authentication pages (Login/Register)
 - Dashboard page with KPI + charts
 - Transactions page (CRUD + filters + pagination)
@@ -21,6 +22,7 @@ React + Tailwind frontend for the Personal Expense Tracker.
 - Accounts page (CRUD)
 - Budgets page (monthly budget control)
 - Reports page (summary + category + trend)
+- Reports CSV export integration
 - Settings page (profile + password)
 - Custom animated UI effects (`auroraShift`, `prismFloat`, `cometSweep`, `meshPulse`)
 

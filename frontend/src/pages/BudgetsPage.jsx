@@ -47,6 +47,16 @@ export function BudgetsPage() {
     event.preventDefault();
     setError('');
 
+    if (!form.categoryId) {
+      setError('Please select a category for this budget.');
+      return;
+    }
+
+    if (!Number(form.limitAmount) || Number(form.limitAmount) <= 0) {
+      setError('Budget limit must be greater than zero.');
+      return;
+    }
+
     try {
       await budgetsApi.upsert(form.categoryId, selectedMonth, {
         limitAmount: Number(form.limitAmount),
@@ -74,7 +84,7 @@ export function BudgetsPage() {
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
       <Card title="Budget Controls">
-        <div className="grid gap-3 md:grid-cols-4">
+        <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
           <Input
             label="Month"
             type="month"
@@ -110,10 +120,10 @@ export function BudgetsPage() {
               setForm((prev) => ({ ...prev, alertThresholdPercent: event.target.value }))
             }
           />
-        </div>
-        <div className="mt-3">
-          <Button onClick={submit}>Save Budget</Button>
-        </div>
+          <div className="md:col-span-4 mt-1">
+            <Button type="submit">Save Budget</Button>
+          </div>
+        </form>
       </Card>
 
       <Card title={`Budgets for ${selectedMonth}`}>
@@ -127,6 +137,19 @@ export function BudgetsPage() {
                 <p className="text-sm text-slate-300">
                   Limit: {formatCurrency(budget.limitAmount, user?.currency)}
                 </p>
+                <p className="text-sm text-slate-300">
+                  Spent: {formatCurrency(budget.spentAmount, user?.currency)}
+                </p>
+                <p className="text-sm text-slate-300">
+                  Remaining: {formatCurrency(budget.remainingAmount, user?.currency)}
+                </p>
+                <div className="mt-2 h-2 rounded-full bg-slate-800">
+                  <div
+                    className={`h-2 rounded-full ${budget.isOverspent ? 'bg-rose-500' : budget.isThresholdReached ? 'bg-amber-400' : 'bg-cyan-400'}`}
+                    style={{ width: `${Math.min(100, Number(budget.progressPercent || 0))}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400">Progress: {Number(budget.progressPercent || 0).toFixed(2)}%</p>
                 <p className="text-xs text-slate-400">Alert at {budget.alertThresholdPercent}%</p>
                 <div className="mt-3">
                   <Button variant="danger" className="px-3 py-1" onClick={() => removeBudget(budget._id)}>

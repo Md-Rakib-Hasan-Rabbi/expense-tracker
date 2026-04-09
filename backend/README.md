@@ -18,8 +18,9 @@ Production-ready Express + MongoDB backend for the Personal Expense Tracker app.
 - Categories CRUD
 - Accounts CRUD
 - Transactions CRUD with account balance updates
-- Monthly budgets (`upsert`, list, delete)
+- Monthly budgets (`upsert`, list, delete) with computed spend/remaining/progress
 - Reports (summary, category breakdown, monthly trend)
+- CSV transaction export endpoint
 - Recurring rules CRUD
 - Security middleware (`helmet`, `cors`, `rate-limit`, `mongo-sanitize`, `hpp`)
 - Centralized error handling
@@ -138,6 +139,9 @@ GET http://localhost:5000/health
 - `GET /reports/category-breakdown?from=<ISO>&to=<ISO>`
 - `GET /reports/monthly-trend?months=12`
 
+### Exports
+- `GET /exports/transactions/csv?from=<ISO>&to=<ISO>&type=<expense|income>&accountId=<id>&categoryId=<id>`
+
 ### Recurring Rules
 - `GET /recurring-rules`
 - `POST /recurring-rules`
@@ -157,4 +161,4 @@ GET http://localhost:5000/health
 
 ## Next Step
 
-Backend is ready for integration with the frontend. Use this API base and endpoint contracts for React app wiring.
+Backend is integrated with the frontend app and ready to run in monorepo mode from the project root.
