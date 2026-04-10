@@ -12,18 +12,32 @@ const optionalTrimmedString = (schema) =>
 
 const registerSchema = z.object({
   body: z.object({
-    name: z.string().trim().min(2).max(80),
-    email: z.string().email().toLowerCase(),
-    password: z.string().min(8).max(128),
-    currency: optionalTrimmedString(z.string().length(3)),
-    timezone: optionalTrimmedString(z.string().max(100)),
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Full name must be at least 2 characters long')
+      .max(80, 'Full name must be at most 80 characters long'),
+    email: z.string().email('Please enter a valid email address').toLowerCase(),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters long')
+      .max(128, 'Password must be at most 128 characters long'),
+    currency: optionalTrimmedString(
+      z.string().length(3, 'Currency must be a 3-letter code (e.g., USD)')
+    ),
+    timezone: optionalTrimmedString(
+      z.string().max(100, 'Timezone must be at most 100 characters long')
+    ),
   }),
 });
 
 const loginSchema = z.object({
   body: z.object({
-    email: z.string().email().toLowerCase(),
-    password: z.string().min(8).max(128),
+    email: z.string().email('Please enter a valid email address').toLowerCase(),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters long')
+      .max(128, 'Password must be at most 128 characters long'),
   }),
 });
 
