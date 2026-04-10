@@ -11,7 +11,7 @@ const updateMeSchema = z.object({
     currency: z
       .string()
       .trim()
-      .length(3, 'Currency must be a 3-letter code (e.g., USD)')
+      .length(3, 'Currency must be a 3-letter code (e.g., BDT)')
       .optional(),
     timezone: z
       .string()

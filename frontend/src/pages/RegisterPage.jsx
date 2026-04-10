@@ -13,8 +13,8 @@ export function RegisterPage() {
     name: '',
     email: '',
     password: '',
-    currency: 'USD',
-    timezone: 'UTC',
+    currency: 'BDT',
+    timezone: 'Asia/Dhaka',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,8 +28,8 @@ export function RegisterPage() {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        currency: form.currency.trim() || 'USD',
-        timezone: form.timezone.trim() || 'UTC',
+        currency: form.currency.trim() || 'BDT',
+        timezone: form.timezone.trim() || 'Asia/Dhaka',
       });
       navigate('/dashboard');
     } catch (submitError) {

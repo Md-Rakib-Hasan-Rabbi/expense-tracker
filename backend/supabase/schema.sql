@@ -13,8 +13,8 @@ create table if not exists public.users (
   name varchar(120) not null,
   email varchar(255) not null unique,
   password_hash text not null,
-  currency varchar(10) not null default 'USD',
-  timezone varchar(64) not null default 'UTC',
+  currency varchar(10) not null default 'BDT',
+  timezone varchar(64) not null default 'Asia/Dhaka',
   settings jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

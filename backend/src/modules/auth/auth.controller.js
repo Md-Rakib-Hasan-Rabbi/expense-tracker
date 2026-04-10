@@ -70,8 +70,8 @@ const register = asyncHandler(async (req, res) => {
       name,
       email,
       password_hash: passwordHash,
-      currency: currency ? currency.toUpperCase() : 'USD',
-      timezone: timezone || 'UTC',
+      currency: currency ? currency.toUpperCase() : 'BDT',
+      timezone: timezone || 'Asia/Dhaka',
       settings: { theme: 'system' },
     })
     .select('*')

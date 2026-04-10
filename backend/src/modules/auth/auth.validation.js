@@ -23,7 +23,7 @@ const registerSchema = z.object({
       .min(8, 'Password must be at least 8 characters long')
       .max(128, 'Password must be at most 128 characters long'),
     currency: optionalTrimmedString(
-      z.string().length(3, 'Currency must be a 3-letter code (e.g., USD)')
+      z.string().length(3, 'Currency must be a 3-letter code (e.g., BDT)')
     ),
     timezone: optionalTrimmedString(
       z.string().max(100, 'Timezone must be at most 100 characters long')
